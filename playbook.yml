@@ -1,0 +1,98 @@
+---
+- hosts: localhost
+  vars:
+    hostname: devpi.hif.lo
+    host_address: 192.168.111.19
+    node_download_url: https://nodejs.org/dist/v4.4.0/node-v4.4.0-linux-x64.tar.xz
+    # node_download_url: https://cache.hif.lo/node-v4.4.0-linux-x64.tar.xz
+    node_base_filename: node-v4.4.0-linux-x64
+    apache_log_dir: /var/log/apache2
+  become: yes
+  become_method: sudo
+  roles:
+   - role: jdauphant.ssl-certs
+     ssl_certs_common_name: "{{ hostname }}"
+  tasks:
+   - name: install apt packages 
+     apt: name={{ item }} state=present
+     with_items:
+       - apache2
+       - daemontools
+       - daemontools-run
+       - python-pip
+       - python-virtualenv
+       - apt-cacher
+       - wget
+       - xz-utils
+   - apache2_module: name={{ item }} state=present
+     with_items:
+       - proxy
+       - proxy_http
+       - headers
+       - env
+       - ssl
+   - pip: name={{ item }} state=present
+     with_items:
+       - devpi
+       - devpi-server
+       - devpi-web
+   # Open up apt-cacher to the LAN
+   - copy: dest=/etc/apt-cacher/apt-cacher.conf src=files/apt-cacher.conf
+   # Set up the devpi-server to run. This will fail when
+   # it gets to the next comment. When it fails, reboot
+   # and run this playbook again.
+   - copy: dest=/etc/service/ src=files/devpi-server
+   - file: path=/etc/service/devpi-server/run mode=u+wrx
+   - file: path=/etc/service/devpi-server/log/run mode=u+rwx
+   - file: state=link src=/etc/service/devpi-server/log/main/ path=/var/log/devpi
+   - template: dest=/etc/apache2/sites-enabled src=templates/devpi.conf
+   - copy: src=files/devpi.txt dest=/etc/network/devpi.txt
+   - lineinfile: state=present dest=/etc/network/interfaces line="source devpi.txt"    
+   # This next line should fail.
+   - svc: name=devpi-server state=started
+   # 
+   # Download nodejs from the internet
+   # Then install local-npm.
+   # This operation takes a LONG time.
+   - file: name=/opt state=directory
+   - file: name=/opt/{{ node_base_filename }}.tar.xz state=absent
+   - file: name=/opt/{{ node_base_filename }}.tar    state=absent
+   - name: download node to tmp
+     get_url:
+       dest: /opt/
+       url: "{{ node_download_url }}"
+   # Expose it via the web server, for other nodes to install.
+   - copy: src=/opt/{{ node_base_filename }}.tar.xz dest=/var/www/html/
+   - file: path=/var/www/html/index.html state=absent
+   - command: unxz /opt/{{ node_base_filename }}.tar.xz
+   - unarchive: 
+       src: /opt/{{ node_base_filename }}.tar
+       copy: no
+       dest: /opt/
+   - file: name=/opt/{{ node_base_filename }}.tar    state=absent
+
+   # Symlink binaries into /usr/local/bin
+   # Binaries are in /opt/node-?/bin/node
+   # and /opt/node-?/lib/node_modules/npm/bin/npm-cli.js
+   - file:
+       path: /usr/local/bin/node
+       src: /opt/{{ node_base_filename }}/bin/node
+       state: link
+   - file:
+       path: /usr/local/bin/npm
+       src: /opt/{{ node_base_filename }}/lib/node_modules/npm/bin/npm-cli.js
+       state: link
+   - command: npm config delete registry
+   - command: npm -g install local-npm
+     args:
+       creates: /opt/{{ node_base_filename }}/lib/node_modules/local-npm/
+   - file:
+       path: /usr/local/bin/local-npm
+       src: /opt/{{ node_base_filename }}/lib/node_modules/local-npm/lib/bin.js
+       state: link
+   - file: path=/etc/service/local-npm state=directory
+   - file: path=/etc/service/local-npm/log state=directory
+   - copy: src=files/local-npm dest=/etc/service/
+   - file: path=/etc/service/local-npm/run mode=u+wrx
+   - file: path=/etc/service/local-npm/log/run mode=u+rwx
+

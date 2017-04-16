@@ -1,0 +1,3 @@
+#! /bin/bash
+
+exec multilog t ./main
