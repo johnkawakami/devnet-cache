@@ -1,0 +1,3 @@
+#! /bin/bash
+
+exec local-npm --url-base http://cache.hif.lo:5080
