@@ -3,9 +3,9 @@
   vars:
     hostname: devpi.hif.lo
     host_address: 192.168.111.19
-    node_download_url: https://nodejs.org/dist/v4.4.0/node-v4.4.0-linux-x64.tar.xz
+    node_download_url: https://nodejs.org/dist/v6.10.2/node-v6.10.2-linux-x64.tar.xz
     # node_download_url: https://cache.hif.lo/node-v4.4.0-linux-x64.tar.xz
-    node_base_filename: node-v4.4.0-linux-x64
+    node_base_filename: node-v6.10.2-linux-x64
     apache_log_dir: /var/log/apache2
   become: yes
   become_method: sudo
@@ -83,7 +83,8 @@
        src: /opt/{{ node_base_filename }}/lib/node_modules/npm/bin/npm-cli.js
        state: link
    - command: npm config delete registry
-   - command: npm -g install local-npm
+   - name: install local-npm
+     command: npm -g install local-npm
      args:
        creates: /opt/{{ node_base_filename }}/lib/node_modules/local-npm/
    - file:
