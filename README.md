@@ -19,6 +19,7 @@ To install,
 1. Create a new virtual machine and install Ubuntu Linux. Details below.
 2. Copy this directory to the VM, and run ansible-setup.sh as root.  
 3. Run install.sh as root.
+4. Set up a new interface for devpi. See below.
 
 Installation takes a **long** time, and the first time you hit
 it, it's extremely slow.  It may even fail due to network 
@@ -73,6 +74,8 @@ the specific version from here:
 
 Mount the cdrom and run the .run file.  Look for error messages.  Once it's OK, reboot.
 
+If the VM looks good, shut it down.
+
 This becomes my master image, and I build new VMs from this master image.
 
 ## The Cache VM
@@ -81,5 +84,12 @@ From the parent VM, I make a *linked* clone. That becomes the cache.
 
 The static IP address for the cache is 192.168.111.17.
 
+Edit /etc/hostname to reflect the new hostname.
+
+The new hostname will need to be either set up in the DNS, or hosts files.
+
 Install Ansible, as above.
+
+## Devpi
+
 
